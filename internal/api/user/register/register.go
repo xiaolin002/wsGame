@@ -4,17 +4,19 @@ import (
 	"github.com/gorilla/websocket"
 	"google.golang.org/protobuf/proto"
 	"log"
-	"sync"
-	"wsprotGame/command/response"
+	"wsprotGame/internal/service"
 	proto2 "wsprotGame/proto/gen"
+	"wsprotGame/server/command/response"
 )
 
-// 模拟用户数据库
-var users = make(map[string]string)
-var usersMutex sync.Mutex
-
 // RegisterRequestCommand 注册请求命令
-type RegisterRequestCommand struct{}
+type RegisterRequestCommand struct {
+	us service.UserService
+}
+
+func NewRegisterRequestCommand(userService service.UserService) *RegisterRequestCommand {
+	return &RegisterRequestCommand{us: userService}
+}
 
 func (c *RegisterRequestCommand) Execute(conn *websocket.Conn, data []byte, sender *response.ResponseSender) {
 	var req proto2.RegisterRequest
@@ -26,19 +28,13 @@ func (c *RegisterRequestCommand) Execute(conn *websocket.Conn, data []byte, send
 		return
 	}
 	log.Printf("发送注册成功响应，消息类型: %v", proto2.GameMessage_REGISTER_RESPONSE)
-	log.Printf("Received RegisterRequest: Username = %s, Password = %s", req.Username, req.Password)
-	usersMutex.Lock()
-	defer usersMutex.Unlock()
-
-	if _, exists := users[req.Username]; exists {
+	err := c.us.HandleRegister(req)
+	if err != nil {
 		sender.Send(conn, proto2.GameMessage_REGISTER_RESPONSE, &proto2.RegisterResponse{
 			Success: false,
-			Message: "用户名已存在",
+			Message: "注册失败",
 		})
-		return
 	}
-
-	users[req.Username] = req.Password
 	sender.Send(conn, proto2.GameMessage_REGISTER_RESPONSE, &proto2.RegisterResponse{
 		Success: true,
 		Message: "注册成功",

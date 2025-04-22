@@ -3,9 +3,9 @@ package regis
 import (
 	"github.com/gorilla/websocket"
 	"log"
-	"wsprotGame/command"
-	"wsprotGame/command/response"
 	proto2 "wsprotGame/proto/gen"
+	"wsprotGame/server/command"
+	"wsprotGame/server/command/response"
 )
 
 // CommandRegistry 命令注册表

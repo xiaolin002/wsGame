@@ -3154,8 +3154,8 @@ var ReflectionObject = require(24);
 var util = require(37);
 
 /**
- * Constructs a new service method instance.
- * @classdesc Reflected service method.
+ * Constructs a new api method instance.
+ * @classdesc Reflected api method.
  * @extends ReflectionObject
  * @constructor
  * @param {string} name Method name
@@ -3743,11 +3743,11 @@ Namespace.prototype.lookupTypeOrEnum = function lookupTypeOrEnum(path) {
 };
 
 /**
- * Looks up the {@link Service|service} at the specified path, relative to this namespace.
+ * Looks up the {@link Service|api} at the specified path, relative to this namespace.
  * Besides its signature, this methods differs from {@link Namespace#lookup|lookup} in that it throws instead of returning `null`.
  * @param {string|string[]} path Path to look up
- * @returns {Service} Looked up service
- * @throws {Error} If `path` does not point to a service
+ * @returns {Service} Looked up api
+ * @throws {Error} If `path` does not point to a api
  */
 Namespace.prototype.lookupService = function lookupService(path) {
     var found = this.lookup(path, [ Service ]);
@@ -4673,7 +4673,7 @@ function parse(source, root, options) {
                 parseEnum(parent, token);
                 return true;
 
-            case "service":
+            case "api":
                 parseService(parent, token);
                 return true;
 
@@ -5136,7 +5136,7 @@ function parse(source, root, options) {
 
         /* istanbul ignore if */
         if (!nameRe.test(token = next()))
-            throw illegal(token, "service name");
+            throw illegal(token, "api name");
 
         var service = new Service(token);
         ifBlock(service, function parseService_block(token) {
@@ -6207,7 +6207,7 @@ module.exports = {};
 var rpc = exports;
 
 /**
- * RPC implementation passed to {@link Service#create} performing a service request on network level, i.e. by utilizing http requests or websockets.
+ * RPC implementation passed to {@link Service#create} performing a api request on network level, i.e. by utilizing http requests or websockets.
  * @typedef RPCImpl
  * @type {function}
  * @param {Method|rpc.ServiceMethod<Message<{}>,Message<{}>>} method Reflected or static method being called
@@ -6245,9 +6245,9 @@ var util = require(39);
 (Service.prototype = Object.create(util.EventEmitter.prototype)).constructor = Service;
 
 /**
- * A service method callback as used by {@link rpc.ServiceMethod|ServiceMethod}.
+ * A api method callback as used by {@link rpc.ServiceMethod|ServiceMethod}.
  *
- * Differs from {@link RPCImplCallback} in that it is an actual callback of a service method which may not return `response = null`.
+ * Differs from {@link RPCImplCallback} in that it is an actual callback of a api method which may not return `response = null`.
  * @typedef rpc.ServiceMethodCallback
  * @template TRes extends Message<TRes>
  * @type {function}
@@ -6257,7 +6257,7 @@ var util = require(39);
  */
 
 /**
- * A service method part of a {@link rpc.Service} as created by {@link Service.create}.
+ * A api method part of a {@link rpc.Service} as created by {@link Service.create}.
  * @typedef rpc.ServiceMethod
  * @template TReq extends Message<TReq>
  * @template TRes extends Message<TRes>
@@ -6268,8 +6268,8 @@ var util = require(39);
  */
 
 /**
- * Constructs a new RPC service instance.
- * @classdesc An RPC service as returned by {@link Service#create}.
+ * Constructs a new RPC api instance.
+ * @classdesc An RPC api as returned by {@link Service#create}.
  * @exports rpc.Service
  * @extends util.EventEmitter
  * @constructor
@@ -6285,7 +6285,7 @@ function Service(rpcImpl, requestDelimited, responseDelimited) {
     util.EventEmitter.call(this);
 
     /**
-     * RPC implementation. Becomes `null` once the service is ended.
+     * RPC implementation. Becomes `null` once the api is ended.
      * @type {RPCImpl|null}
      */
     this.rpcImpl = rpcImpl;
@@ -6304,7 +6304,7 @@ function Service(rpcImpl, requestDelimited, responseDelimited) {
 }
 
 /**
- * Calls a service method through {@link rpc.Service#rpcImpl|rpcImpl}.
+ * Calls a api method through {@link rpc.Service#rpcImpl|rpcImpl}.
  * @param {Method|rpc.ServiceMethod<TReq,TRes>} method Reflected or static method
  * @param {Constructor<TReq>} requestCtor Request constructor
  * @param {Constructor<TRes>} responseCtor Response constructor
@@ -6365,8 +6365,8 @@ Service.prototype.rpcCall = function rpcCall(method, requestCtor, responseCtor, 
 };
 
 /**
- * Ends this service and emits the `end` event.
- * @param {boolean} [endedByRPC=false] Whether the service has been ended by the RPC implementation.
+ * Ends this api and emits the `end` event.
+ * @param {boolean} [endedByRPC=false] Whether the api has been ended by the RPC implementation.
  * @returns {rpc.Service} `this`
  */
 Service.prototype.end = function end(endedByRPC) {
@@ -6392,8 +6392,8 @@ var Method = require(22),
     rpc    = require(31);
 
 /**
- * Constructs a new service instance.
- * @classdesc Reflected service.
+ * Constructs a new api instance.
+ * @classdesc Reflected api.
  * @extends NamespaceBase
  * @constructor
  * @param {string} name Service name
@@ -6425,10 +6425,10 @@ function Service(name, options) {
  */
 
 /**
- * Constructs a service from a service descriptor.
+ * Constructs a api from a api descriptor.
  * @param {string} name Service name
  * @param {IService} json Service descriptor
- * @returns {Service} Created service
+ * @returns {Service} Created api
  * @throws {TypeError} If arguments are invalid
  */
 Service.fromJSON = function fromJSON(name, json) {
@@ -6447,7 +6447,7 @@ Service.fromJSON = function fromJSON(name, json) {
 };
 
 /**
- * Converts this service to a service descriptor.
+ * Converts this api to a api descriptor.
  * @param {IToJSONOptions} [toJSONOptions] JSON conversion options
  * @returns {IService} Service descriptor
  */
@@ -6464,7 +6464,7 @@ Service.prototype.toJSON = function toJSON(toJSONOptions) {
 };
 
 /**
- * Methods of this service as an array for iteration.
+ * Methods of this api as an array for iteration.
  * @name Service#methodsArray
  * @type {Method[]}
  * @readonly
@@ -6547,11 +6547,11 @@ Service.prototype.remove = function remove(object) {
 };
 
 /**
- * Creates a runtime service using the specified rpc implementation.
+ * Creates a runtime api using the specified rpc implementation.
  * @param {RPCImpl} rpcImpl RPC implementation
  * @param {boolean} [requestDelimited=false] Whether requests are length-delimited
  * @param {boolean} [responseDelimited=false] Whether responses are length-delimited
- * @returns {rpc.Service} RPC service. Useful where requests and/or responses are streamed.
+ * @returns {rpc.Service} RPC api. Useful where requests and/or responses are streamed.
  */
 Service.prototype.create = function create(rpcImpl, requestDelimited, responseDelimited) {
     var rpcService = new rpc.Service(rpcImpl, requestDelimited, responseDelimited);
