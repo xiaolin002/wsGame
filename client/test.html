@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test</title>
+    <script src="protobuf.js"></script>
+</head>
+<body>
+<h1>WebSocket Test</h1>
+<button id="registerBtn">Register</button>
+<button id="loginBtn">Login</button>
+<pre id="output"></pre>
+
+<script>
+    const output = document.getElementById('output');
+    const ws = new WebSocket('ws://127.0.0.1:8080/ws');
+
+    ws.onopen = () => {
+        output.textContent += 'Connected to server\n';
+    };
+
+    ws.onmessage =async (event) => {
+        try {
+            let message;
+            if (event.data instanceof ArrayBuffer) {
+                message = new Uint8Array(event.data);
+            } else {
+                const arrayBuffer = await event.data.arrayBuffer();
+                message = new Uint8Array(arrayBuffer);
+            }
+
+            console.log('原始消息字节数组:', message); // 打印原始消息字节数组
+
+            const GameMessage = root.lookupType('gen.GameMessage');
+            if (!GameMessage) {
+                output.textContent += '未找到 GameMessage 类型\n';
+                return;
+            }
+
+            const decodedMessage = GameMessage.decode(message);
+           // console.log('解码后的消息:', decodedMessage); // 打印解码后的消息
+
+            //output.textContent += `收到消息: 类型 = ${decodedMessage.type}\n`;
+            switch (decodedMessage.type) {
+                case 1:
+                    const RegisterResponse = root.lookupType('gen.RegisterResponse');
+                    if (!RegisterResponse) {
+                        output.textContent += '未找到 RegisterResponse 类型\n';
+                        return;
+                    }
+                    const registerResp = RegisterResponse.decode(decodedMessage.data);
+                    output.textContent += `注册响应: 成功 = ${registerResp.success}, 消息 = ${registerResp.message}\n`;
+                    break;
+                case 3:
+                    const LoginResponse = root.lookupType('gen.LoginResponse');
+                    if (!LoginResponse) {
+                        output.textContent += '未找到 LoginResponse 类型\n';
+                        return;
+                    }
+                    const loginResp = LoginResponse.decode(decodedMessage.data);
+                    output.textContent += `登录响应: 成功 = ${loginResp.success}, 消息 = ${loginResp.message}, 令牌 = ${loginResp.token}\n`;
+                    break;
+                default:
+                    output.textContent += `收到未知消息类型: ${decodedMessage.type}\n`;
+            }
+
+
+        } catch (error) {
+            output.textContent += `解码消息出错: ${error.message}\n`;
+            console.error('解码错误:', error);
+        }
+
+    }
+
+    ws.onerror = (error) => {
+        output.textContent += 'WebSocket error: ' + error.message + '\n';
+    };
+
+    ws.onclose = () => {
+        output.textContent += 'Disconnected from server\n';
+    };
+
+    // Load the protobuf definition
+    let root;
+    protobuf.load("../proto/intr/user.proto", (err, loadedRoot) => {
+        if (err) {
+            console.error(err);
+            return;
+        }
+        root = loadedRoot;
+    });
+
+    document.getElementById('registerBtn').onclick = () => {
+        const RegisterRequest = root.lookupType("gen.RegisterRequest");
+        const payload = { username: 'testuser', password: 'testpassword' };
+        const errMsg = RegisterRequest.verify(payload);
+        if (errMsg) throw Error(errMsg);
+
+        const message = RegisterRequest.create(payload);
+        const buffer = RegisterRequest.encode(message).finish();
+
+        const gameMessage = {
+            type: 0, // REGISTER_REQUEST
+            data: buffer
+        };
+        const GameMessage = root.lookupType("gen.GameMessage");
+        const gameMessageBuffer = GameMessage.encode(gameMessage).finish();
+        ws.send(gameMessageBuffer);
+    };
+
+    document.getElementById('loginBtn').onclick = () => {
+        const LoginRequest = root.lookupType("gen.LoginRequest");
+        const payload = { username: 'testuser', password: 'testpassword' };
+        const errMsg = LoginRequest.verify(payload);
+        if (errMsg) throw Error(errMsg);
+
+        const message = LoginRequest.create(payload);
+        const buffer = LoginRequest.encode(message).finish();
+
+        const gameMessage = {
+            type: 2, // LOGIN_REQUEST
+            data: buffer
+        };
+        const GameMessage = root.lookupType("gen.GameMessage");
+        const gameMessageBuffer = GameMessage.encode(gameMessage).finish();
+        ws.send(gameMessageBuffer);
+    };
+</script>
+</body>
+</html>

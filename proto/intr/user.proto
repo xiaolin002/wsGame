@@ -1,0 +1,44 @@
+syntax = "proto3";
+// 可以看出package指定的是生成路径
+//option 是生成到gen的下边
+package gen;
+option go_package = "./";
+// protoc --go_out=./proto/gen --proto_path=./proto/intr ./proto/intr/*.proto
+//protoc --js_out=import_style=commonjs,binary:. proto/intr/user.proto  客户端的代码
+
+// 注册请求
+message RegisterRequest {
+  string username = 1;
+  string password = 2;
+}
+
+// 注册响应
+message RegisterResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// 登录请求
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+// 登录响应
+message LoginResponse {
+  bool success = 1;
+  string message = 2;
+  string token = 3;
+}
+
+// 通用消息封装，方便扩展其他业务
+message GameMessage {
+  enum MessageType {
+    REGISTER_REQUEST = 0;
+    REGISTER_RESPONSE = 1;
+    LOGIN_REQUEST = 2;
+    LOGIN_RESPONSE = 3;
+  }
+  MessageType type = 1;
+  bytes data = 2;
+}
