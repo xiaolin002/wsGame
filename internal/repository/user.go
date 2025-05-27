@@ -1,6 +1,11 @@
 package repository
 
-import "wsprotGame/internal/repository/dao"
+import (
+	"context"
+	"database/sql"
+	"wsprotGame/internal/domain"
+	"wsprotGame/internal/repository/dao"
+)
 
 /**
  * @Description
@@ -8,16 +13,16 @@ import "wsprotGame/internal/repository/dao"
  **/
 
 type UserRepository interface {
-	FindByAP(username string) (string, bool)
-	CreateUser(username string, password string) error
+	FindByAP(ctx context.Context, username string) (domain.User, bool)
+	CreateUser(ctx context.Context, user domain.User) error
 }
 
 type UserCacheRepository struct {
 	dao dao.UserDao
 }
 
-func (r *UserCacheRepository) CreateUser(username string, password string) error {
-	err := r.dao.InsertUser(username, password)
+func (r *UserCacheRepository) CreateUser(ctx context.Context, user domain.User) error {
+	err := r.dao.InsertUser(ctx, r.toDaoUser(user))
 	if err != nil {
 		return err
 
@@ -29,6 +34,39 @@ func NewUserCacheRepository(dao dao.UserDao) UserRepository {
 	return &UserCacheRepository{dao: dao}
 }
 
-func (r *UserCacheRepository) FindByAP(username string) (string, bool) {
-	return r.dao.FindByAP(username)
+func (r *UserCacheRepository) FindByAP(ctx context.Context, username string) (domain.User, bool) {
+	u, b := r.dao.FindByAP(ctx, username)
+	if b == false {
+		return r.toDomainUser(u), false
+	}
+
+	return r.toDomainUser(u), true
+}
+
+func (r *UserCacheRepository) toDaoUser(u domain.User) dao.User {
+	return dao.User{
+		Id: u.Id,
+		Email: sql.NullString{
+			String: u.Email,
+			Valid:  u.Email != "",
+		},
+		Phone: sql.NullString{
+			String: u.Phone,
+			Valid:  u.Phone != "",
+		},
+		// valid 取值为true不为空 取值为false为空
+		Password: u.Password,
+		//Birthday: u.Birthday.UnixMilli(),
+		NickName: u.NickName,
+		AboutMe:  u.AboutMe,
+	}
+}
+func (r *UserCacheRepository) toDomainUser(u dao.User) domain.User {
+	return domain.User{
+		Id:       u.Id,
+		Uid:      u.Uid,
+		Phone:    u.Phone.String,
+		NickName: u.NickName,
+		Password: u.Password,
+	}
 }

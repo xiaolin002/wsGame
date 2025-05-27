@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册与登录</title>
+    <script src="protobuf.js"></script>
+    <style>
+        :root {
+            --primary-color: #28a745;
+            --secondary-color: #218838;
+            --background-color: #f4f4f4;
+            --form-bg-color: #ffffff;
+            --text-color: #333333;
+            --input-border-color: #cccccc;
+            --input-focus-color: #80bdff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 2rem;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-container {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .form-section {
+            background: var(--form-bg-color);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            flex: 1;
+            min-width: 300px;
+            max-width: 400px;
+        }
+
+        .form-section h2 {
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #555555;
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid var(--input-border-color);
+            border-radius: 6px;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            border-color: var(--input-focus-color);
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+            outline: none;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            width: 100%;
+            font-weight: 500;
+        }
+
+        button:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        pre {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-top: 1rem;
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+        }
+
+        #chat-section, #private-chat-section {
+            margin-top: 2rem;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        #chat-messages, #private-chat-messages {
+            height: 250px;
+            overflow-y: auto;
+            border: 1px solid var(--input-border-color);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background-color: var(--form-bg-color);
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .message {
+            background-color: #f8f9fa;
+            padding: 0.8rem;
+            border-radius: 6px;
+        }
+
+        .message .sender {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .message .timestamp {
+            font-size: 0.8em;
+            color: #888888;
+            margin-left: 0.5rem;
+        }
+
+        .chat-input-group {
+            display: flex;
+            gap: 1rem;
+        }
+
+        /* 新增样式，让输入框占 70%，按钮占 30% */
+        .chat-input-group input {
+            flex: 7;
+        }
+
+        .chat-input-group button {
+            flex: 3;
+        }
+    </style>
+</head>
+<body>
+<h1>注册与登录</h1>
+<div class="form-container">
+    <div class="form-section">
+        <h2>注册</h2>
+        <div class="form-group">
+            <label for="registerUsername">用户名:</label>
+            <input type="text" id="registerUsername" placeholder="请输入用户名">
+        </div>
+        <div class="form-group">
+            <label for="registerPassword">密码:</label>
+            <input type="password" id="registerPassword" placeholder="请输入密码">
+        </div>
+        <div class="form-group">
+            <label for="registerPhone">手机号:</label>
+            <input type="text" id="registerPhone" placeholder="请输入手机号">
+        </div>
+        <button id="registerBtn">注册</button>
+        <pre id="registerOutput"></pre>
+    </div>
+    <div class="form-section">
+        <h2>登录</h2>
+        <div class="form-group">
+            <label for="loginUsername">用户名:</label>
+            <input type="text" id="loginUsername" placeholder="请输入用户名">
+        </div>
+        <div class="form-group">
+            <label for="loginPassword">密码:</label>
+            <input type="password" id="loginPassword" placeholder="请输入密码">
+        </div>
+        <button id="loginBtn">登录</button>
+        <pre id="loginOutput"></pre>
+    </div>
+</div>
+
+<div class="form-section" id="chat-section">
+    <h2>在线聊天</h2>
+    <div id="chat-messages"></div>
+    <div class="chat-input-group form-group">
+        <input type="text" id="chatInput" placeholder="输入聊天消息">
+        <button id="sendBtn">发送</button>
+    </div>
+</div>
+
+<div class="form-section" id="private-chat-section">
+    <h2>私聊</h2>
+    <div id="private-chat-messages"></div>
+    <div class="form-group">
+        <label for="privateReceiver">私聊对象:</label>
+        <input type="text" id="privateReceiver" placeholder="输入接收者用户名">
+    </div>
+    <div class="chat-input-group form-group">
+        <input type="text" id="privateMessageInput" placeholder="输入私聊消息">
+        <button id="sendPrivateBtn">发送私聊</button>
+    </div>
+</div>
+
+<script>
+    let root;
+    const registerOutput = document.getElementById('registerOutput');
+    const loginOutput = document.getElementById('loginOutput');
+    const ws = new WebSocket('ws://127.0.0.1:8080/ws');
+    const chatSection = document.getElementById('chat-section');
+    const privateChatSection = document.getElementById('private-chat-section');
+    const chatMessages = document.getElementById('chat-messages');
+    const privateChatMessages = document.getElementById('private-chat-messages');
+    const chatInput = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const privateReceiver = document.getElementById('privateReceiver');
+    const privateMessageInput = document.getElementById('privateMessageInput');
+    const sendPrivateBtn = document.getElementById('sendPrivateBtn');
+
+    protobuf.load("../proto/intr/user.proto", (err, loadedRoot) => {
+        if (err) {
+            console.error(err);
+            return;
+        }
+        root = loadedRoot;
+    });
+
+    ws.onopen = () => {
+        registerOutput.textContent += 'Connected to server\n';
+        loginOutput.textContent += 'Connected to server\n';
+    };
+
+    ws.onmessage = async (event) => {
+        try {
+            let message;
+            if (event.data instanceof ArrayBuffer) {
+                message = new Uint8Array(event.data);
+            } else {
+                const arrayBuffer = await event.data.arrayBuffer();
+                message = new Uint8Array(arrayBuffer);
+            }
+
+            const GameMessage = root.lookupType('gen.GameMessage');
+            const decodedMessage = GameMessage.decode(message);
+
+            switch (decodedMessage.type) {
+                case 1: // RegisterResponse
+                    const RegisterResponse = root.lookupType('gen.RegisterResponse');
+                    const registerResp = RegisterResponse.decode(decodedMessage.data);
+                    registerOutput.textContent += `注册响应: 成功 = ${registerResp.success}, 消息 = ${registerResp.message}\n`;
+                    break;
+                case 3: // LoginResponse
+                    const LoginResponse = root.lookupType('gen.LoginResponse');
+                    const loginResp = LoginResponse.decode(decodedMessage.data);
+                    loginOutput.textContent += `登录响应: 成功 = ${loginResp.success}, 消息 = ${loginResp.message}, 令牌 = ${loginResp.token}\n`;
+                    if (loginResp.success) {
+                        chatSection.style.display = 'block';
+                        privateChatSection.style.display = 'block'; // 显示私聊部分
+                    }
+                    break;
+                case 4: // ChatMessage
+                    const ChatMessage = root.lookupType('gen.ChatMessage');
+                    const chatMsg = ChatMessage.decode(decodedMessage.data);
+                    const timestamp = new Date(chatMsg.timestamp * 1000).toLocaleString();
+                    chatMessages.innerHTML += `<div class="message"><p><span class="sender">${chatMsg.sender}</span> <span class="timestamp">(${timestamp})</span>: ${chatMsg.content}</p></div>`;
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                    break;
+                case 5: // PrivateChatMessage
+                    const PrivateChatMessage = root.lookupType('gen.PrivateChatMessage');
+                    const privateChatMsg = PrivateChatMessage.decode(decodedMessage.data);
+                    const privateTimestamp = new Date(privateChatMsg.timestamp * 1000).toLocaleString();
+                    privateChatMessages.innerHTML += `<div class="message"><p><span class="sender">${privateChatMsg.sender}</span> <span class="timestamp">(${privateTimestamp})</span>: ${privateChatMsg.content}</p></div>`;
+                    privateChatMessages.scrollTop = privateChatMessages.scrollHeight;
+                    break;
+                default:
+                    registerOutput.textContent += `收到未知消息类型: ${decodedMessage.type}\n`;
+                    loginOutput.textContent += `收到未知消息类型: ${decodedMessage.type}\n`;
+            }
+        } catch (error) {
+            registerOutput.textContent += `解码消息出错: ${error.message}\n`;
+            loginOutput.textContent += `解码消息出错: ${error.message}\n`;
+            console.error('解码错误:', error);
+        }
+    };
+
+    ws.onerror = (error) => {
+        registerOutput.textContent += 'WebSocket error: ' + error.message + '\n';
+        loginOutput.textContent += 'WebSocket error: ' + error.message + '\n';
+    };
+
+    ws.onclose = () => {
+        registerOutput.textContent += 'Disconnected from server\n';
+        loginOutput.textContent += 'Disconnected from server\n';
+        chatSection.style.display = 'none';
+        privateChatSection.style.display = 'none';
+    };
+
+    document.getElementById('registerBtn').onclick = () => {
+        const username = document.getElementById('registerUsername').value;
+        const password = document.getElementById('registerPassword').value;
+        const phone = document.getElementById('registerPhone').value;
+
+        const RegisterRequest = root.lookupType("gen.RegisterRequest");
+        const payload = { username: username, password: password , phone: phone};
+        const errMsg = RegisterRequest.verify(payload);
+        if (errMsg) throw Error(errMsg);
+
+        const message = RegisterRequest.create(payload);
+        const buffer = RegisterRequest.encode(message).finish();
+
+        const gameMessage = {
+            type: 0, // REGISTER_REQUEST
+            data: buffer
+        };
+        const GameMessage = root.lookupType("gen.GameMessage");
+        const gameMessageBuffer = GameMessage.encode(gameMessage).finish();
+        ws.send(gameMessageBuffer);
+    };
+
+    document.getElementById('loginBtn').onclick = () => {
+        const username = document.getElementById('loginUsername').value;
+        const password = document.getElementById('loginPassword').value;
+
+        const LoginRequest = root.lookupType("gen.LoginRequest");
+        const payload = { username: username, password: password };
+        const errMsg = LoginRequest.verify(payload);
+        if (errMsg) throw Error(errMsg);
+
+        const message = LoginRequest.create(payload);
+        const buffer = LoginRequest.encode(message).finish();
+
+        const gameMessage = {
+            type: 2, // LOGIN_REQUEST
+            data: buffer
+        };
+        const GameMessage = root.lookupType("gen.GameMessage");
+        const gameMessageBuffer = GameMessage.encode(gameMessage).finish();
+        ws.send(gameMessageBuffer);
+    };
+
+    sendBtn.onclick = () => {
+        const content = chatInput.value;
+        if (content.trim() === '') return;
+
+        const ChatMessage = root.lookupType('gen.ChatMessage');
+        const payload = { content: content };
+        const errMsg = ChatMessage.verify(payload);
+        if (errMsg) throw Error(errMsg);
+
+        const message = ChatMessage.create(payload);
+        const buffer = ChatMessage.encode(message).finish();
+
+        const gameMessage = {
+            type: 4, // CHAT_MESSAGE
+            data: buffer
+        };
+        const GameMessage = root.lookupType("gen.GameMessage");
+        const gameMessageBuffer = GameMessage.encode(gameMessage).finish();
+        ws.send(gameMessageBuffer);
+
+        chatInput.value = '';
+    };
+
+    sendPrivateBtn.onclick = () => {
+        const receiver = privateReceiver.value;
+        const content = privateMessageInput.value;
+        if (receiver.trim() === '' || content.trim() === '') return;
+
+        const PrivateChatMessage = root.lookupType('gen.PrivateChatMessage');
+        const payload = { receiver: receiver, content: content };
+        const errMsg = PrivateChatMessage.verify(payload);
+        if (errMsg) throw Error(errMsg);
+
+        const message = PrivateChatMessage.create(payload);
+        const buffer = PrivateChatMessage.encode(message).finish();
+
+        const gameMessage = {
+            type: 5, // PRIVATE_CHAT_MESSAGE
+            data: buffer
+        };
+        const GameMessage = root.lookupType("gen.GameMessage");
+        const gameMessageBuffer = GameMessage.encode(gameMessage).finish();
+        ws.send(gameMessageBuffer);
+
+        privateMessageInput.value = '';
+    };
+</script>
+</body>
+</html>

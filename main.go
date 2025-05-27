@@ -2,15 +2,17 @@ package main
 
 import (
 	"github.com/gorilla/websocket"
+	"github.com/redis/go-redis/v9"
 	"google.golang.org/protobuf/proto"
 	"gorm.io/gorm"
 	"log"
 	"net/http"
 	"time"
-	"wsprotGame/internal/api/user"
 	"wsprotGame/internal/repository"
 	"wsprotGame/internal/repository/dao"
 	"wsprotGame/internal/service"
+	"wsprotGame/internal/web/chat"
+	"wsprotGame/internal/web/user"
 	"wsprotGame/ioc"
 	proto2 "wsprotGame/proto/gen"
 	"wsprotGame/server/command"
@@ -34,73 +36,92 @@ func handleWebSocket(registry *regis.CommandRegistry, connManager *connection.Co
 	if r.Method == "OPTIONS" {
 		return
 	}
+
+	//
+	ctx := r.Context()
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("Failed to upgrade connection:", err)
 		return
 	}
-	defer conn.Close()
-	// 添加连接到管理器
-
 	// 创建连接信息实例
-	connInfo := &connection.ConnInfo{
-		Conn:        conn,
-		Status:      "connected",
-		ConnectTime: time.Now(),
-	}
-
+	connInfo := connection.NewConnInfo(conn, ctx)
 	// 添加连接到管理器，自动分配 cid
 	cid := connManager.Add(connInfo)
+
+	defer conn.Close()
 	defer connManager.Remove(cid)
+	// 创建 ResponseSender 实
+	sender := &response.ResponseSender{}
 	// 心跳机制
 	go func() {
 		for {
 			time.Sleep(30 * time.Second)
 			if err := conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
-				log.Println("Failed to send ping:", err)
+				log.Println("心跳机制ping失败:", err)
 				break
 			}
 		}
 	}()
 
-	// 创建 ResponseSender 实例
-	sender := &response.ResponseSender{}
-
 	for {
-		conn.SetReadDeadline(time.Now().Add(60 * time.Second)) // 设置读取超时
+		conn.SetReadDeadline(time.Now().Add(60 * time.Minute)) // 设置读取超时
 		_, raw, err := conn.ReadMessage()
 		if err != nil {
-			log.Println("Error reading message:", err)
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("Unexpected close error: %v", err)
+			} else if closeErr, ok := err.(*websocket.CloseError); ok {
+				log.Printf("Connection closed with code %d and message %q", closeErr.Code, closeErr.Text)
+			} else if err.Error() == "EOF" {
+				log.Println("Connection closed: EOF")
+			} else {
+				log.Printf("Error reading message: %v", err)
+			}
+			// 显式关闭连接
+			if closeErr := conn.Close(); closeErr != nil {
+				log.Println("Error closing connection:", closeErr)
+			}
 			break
 		}
-		// 这里打印出来的是原始的二进制数据
-		//log.Println("Received message:", raw) // 添加日志
 
 		var gameMsg proto2.GameMessage
-		if err := proto.Unmarshal(raw, &gameMsg); err != nil {
+		if er := proto.Unmarshal(raw, &gameMsg); er != nil {
 			log.Println("Failed to unmarshal message:", err)
 			continue
 		}
-
-		// 执行对应的命令
-		registry.Handler(conn, gameMsg.Type, gameMsg.Data, sender)
+		// 如果用户未认证，只处理注册和登录请求
+		if !connInfo.Authenticated && gameMsg.Type != proto2.GameMessage_REGISTER_REQUEST && gameMsg.Type != proto2.GameMessage_LOGIN_REQUEST {
+			sender.Send(connInfo.Conn, proto2.GameMessage_LOGIN_RESPONSE, &proto2.LoginResponse{
+				Success: false,
+				Message: "请先进行注册或登录",
+			})
+			continue
+		}
+		// 启动协程处理消息
+		go func(localGameMsg proto2.GameMessage, localConnInfo *connection.ConnInfo) {
+			registry.Handler(localConnInfo, localGameMsg.Type, localGameMsg.Data, sender, ctx)
+		}(gameMsg, connInfo)
 	}
+
+	// 执行对应的命令
+	//registry.Handler(connInfo, gameMsg.Type, gameMsg.Data, sender, ctx)
+
 }
 
 func main() {
 
 	db := ioc.InitDB()
-	userService := InitUserComponents(db)
+	rdb := ioc.InitRedis()
+	// 初始化用户业务组件
+	userService := InitUserComponents(db, rdb)
+	// 创建连接管理器
+	connManager := connection.NewConnectionManager()
 
 	// 初始化命令注册表，传入用户业务的选项函数
 	registry := InitCommandRegistry(
-		user.WithUserCommands(userService),
-		// 可以添加其他业务的选项函数
-		// otherpackage.WithOtherCommands(otherService),
+		user.WithUserCommands(userService, connManager),
+		chat.WithChatCommands(connManager),
 	)
-
-	// 创建连接管理器
-	connManager := connection.NewConnectionManager()
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		handleWebSocket(registry, connManager, w, r)
 	})
@@ -109,8 +130,8 @@ func main() {
 }
 
 // InitUserComponents 初始化用户相关的数据业务组件
-func InitUserComponents(db *gorm.DB) service.UserService {
-	gromDao := dao.NewUserGromDao(db)
+func InitUserComponents(db *gorm.DB, rd redis.Cmdable) service.UserService {
+	gromDao := dao.NewUserGromDao(db, rd)
 	cacheRepository := repository.NewUserCacheRepository(gromDao)
 	userService := service.NewUserService(cacheRepository)
 	return userService
@@ -124,7 +145,7 @@ func InitCommandRegistry(options ...command.CommandOption) *regis.CommandRegistr
 	for _, opt := range options {
 		opt(cmdMap)
 	}
-
+	// 这里是将cmdMao中的命令注册到CommandRegistry 命令注册表
 	registry := regis.NewCommandRegistry()
 	for msgType, cmd := range cmdMap {
 		registry.Register(msgType, cmd)

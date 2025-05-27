@@ -10,6 +10,8 @@ option go_package = "./";
 message RegisterRequest {
   string username = 1;
   string password = 2;
+  // 添加 phone 字段
+  string phone = 3;
 }
 
 // 注册响应
@@ -31,6 +33,23 @@ message LoginResponse {
   string token = 3;
 }
 
+// 聊天消息
+message ChatMessage {
+  string sender = 1;
+  string content = 2;
+  int64 timestamp = 3;
+}
+
+// 聊天消息
+message PrivateChatMessage {
+  string sender = 1;
+  string content = 2;
+  int64 timestamp = 3;
+  string receiver = 4; // 新增接收者字段
+}
+
+
+
 // 通用消息封装，方便扩展其他业务
 message GameMessage {
   enum MessageType {
@@ -38,6 +57,8 @@ message GameMessage {
     REGISTER_RESPONSE = 1;
     LOGIN_REQUEST = 2;
     LOGIN_RESPONSE = 3;
+    CHAT_MESSAGE = 4;
+    PRIVATE_CHAT_MESSAGE = 5;
   }
   MessageType type = 1;
   bytes data = 2;
